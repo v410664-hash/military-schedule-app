@@ -28,24 +28,23 @@ class MilitaryMobileApp:
 
     def build_main_ui(self, page: ft.Page):
         self.page = page
-        self.page.title = "Менеджер БЗВП Мобільний"
+        self.page.title = "Менеджер БЗВП"
         self.page.theme_mode = ft.ThemeMode.DARK
-        self.page.scroll = ft.ScrollMode.ADAPTIVE
         
         self.grid_row = ft.Row(scroll=ft.ScrollMode.ALWAYS, spacing=10, expand=True)
         
         self.source_dropdown = ft.Dropdown(
-            label="Категорія", width=180, corner_radius=8,
+            label="Категорія", width=140,
             options=[ft.dropdown.Option("templates", "Шаблони"), ft.dropdown.Option("algorithms", "Алгоритми")],
             on_change=self.on_source_changed, value="templates"
         )
-        self.filter_dropdown = ft.Dropdown(label="Підрозділ / Взвод", expand=True, corner_radius=8, on_change=self.on_filter_changed)
+        self.filter_dropdown = ft.Dropdown(label="Взвод", expand=True, on_change=self.on_filter_changed)
 
+        # Конструктор інтерфейсу без важких AppBar елементів для стабільності
         self.page.add(
-            ft.AppBar(title=ft.Text("Розклад занять БЗВП"), center_title=True, bg_color="#1A1C1A"),
             ft.Row([
-                ft.ElevatedButton("📁 JSON", icon=ft.icons.FOLDER_OPEN, on_click=lambda _: self.pick_file_dialog.pick_files()),
-                ft.ElevatedButton("📤 Експорт", icon=ft.icons.SAVE, on_click=self.export_json_file)
+                ft.ElevatedButton("📁 JSON", on_click=lambda _: self.pick_file_dialog.pick_files()),
+                ft.ElevatedButton("📤 Експорт", on_click=self.export_json_file)
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
             ft.Row([self.source_dropdown, self.filter_dropdown]),
             ft.Divider(),
@@ -57,7 +56,6 @@ class MilitaryMobileApp:
         
         self.json_data = self.embedded_json
         self.update_filter_dropdown("templates")
-
     def on_file_picked(self, e: ft.FilePickerResultEvent):
         if not e.files: return
         try:
@@ -80,6 +78,7 @@ class MilitaryMobileApp:
 
     def on_filter_changed(self, e):
         self.render_calendar_grid(self.filter_dropdown.value)
+
     def render_calendar_grid(self, selected_name):
         self.grid_row.controls.clear()
         source_type = self.source_dropdown.value
@@ -96,7 +95,7 @@ class MilitaryMobileApp:
             days_data[day_key].append((idx, item))
 
         for day_title, items_list in sorted(days_data.items()):
-            day_column = ft.Column(width=190, scroll=ft.ScrollMode.ADAPTIVE)
+            day_column = ft.Column(width=180, scroll=ft.ScrollMode.ADAPTIVE)
             day_container = ft.Container(content=day_column, bgcolor="#1E201E", border_radius=10, padding=8, border=ft.border.all(1, "#333633"))
             day_column.controls.append(ft.Container(content=ft.Text(day_title, weight="bold", size=13), alignment=ft.alignment.center, padding=5))
 
@@ -117,7 +116,7 @@ class MilitaryMobileApp:
                             ft.IconButton(ft.icons.DELETE, icon_size=14, icon_color="#FF4d4d", on_click=lambda _, idx=global_idx: self.delete_mobile_item(idx))
                         ], alignment=ft.MainAxisAlignment.END, spacing=0)
                     ], spacing=2, alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                    bgcolor=card_color, border_radius=8, padding=6, height=95, width=175
+                    bgcolor=card_color, border_radius=8, padding=6, height=95, width=160
                 )
                 day_column.controls.append(card)
             self.grid_row.controls.append(day_container)
@@ -136,8 +135,8 @@ class MilitaryMobileApp:
         }
 
         self.modal_dialog = ft.AlertDialog(
-            title=ft.Text("Редагування заняття", size=16, weight="bold"),
-            content=ft.Column(list(self.input_fields.values()), tight=True, scroll=ft.ScrollMode.ADAPTIVE, width=320),
+            title=ft.Text("Редагування", size=16, weight="bold"),
+            content=ft.Column(list(self.input_fields.values()), tight=True, scroll=ft.ScrollMode.ADAPTIVE, width=300),
             actions=[
                 ft.TextButton("Скасувати", on_click=lambda _: self.close_modal()),
                 ft.ElevatedButton("Зберегти", bgcolor="#007bff", color="white", on_click=self.save_mobile_modal_data)
@@ -167,4 +166,5 @@ class MilitaryMobileApp:
 
 if __name__ == "__main__":
     app_instance = MilitaryMobileApp()
-    ft.app(target=app_instance.build_main_ui)
+    # Додано примусовий пустий каталог активів для виправлення мобільного зависання Flutter на старті
+    ft.app(target=app_instance.build_main_ui, assets_dir="")
