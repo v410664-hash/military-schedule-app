@@ -29,13 +29,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Init Flet Project Template
+      - name: Configure Gradle Environment
         run: |
-          flet create tmp_app
-          mv tmp_app/android .
-          rm -rf tmp_app
-          mkdir -p android/gradle/wrapper
-          echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.10.2-all.zip" > android/gradle/wrapper/gradle-wrapper.properties
+          mkdir -p ~/.config/flet
+          echo '{"android": {"skipDependencyValidation": true}}' > ~/.config/flet/config.json
+          export FLET_ANDROID_SKIP_DEPENDENCY_VALIDATION=true
+          echo "FLET_ANDROID_SKIP_DEPENDENCY_VALIDATION=true" >> $GITHUB_ENV
 
       - name: Build Android APK
         run: |
