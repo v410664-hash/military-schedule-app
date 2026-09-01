@@ -21,12 +21,10 @@ class MilitaryMobileApp:
         self.embedded_json = {
             "templates": [
                 {
-                    "name": "6 НР 2 НБ (Хронологічний)",
+                    "name": "1 Рота 1 Взвод (Зразок)",
                     "templateItems": [
-                        {"id": 1, "dayNum": 1, "startTime": "10:15:00", "endTime": "11:45:00", "chapter": "Індивідуальна", "subject": "Вогнева підготовка", "abbr": "ВП 1/3", "classType": "(П)", "location": "Директриса", "hours": 2, "topic": "Тема 1", "notes": ""},
-                        {"id": 2, "dayNum": 1, "startTime": "08:30:00", "endTime": "10:00:00", "chapter": "Індивідуальна", "subject": "Вогнева підготовка", "abbr": "ВП 1/5", "classType": "(П)", "location": "Тир", "hours": 2, "topic": "Тема 2", "notes": ""},
-                        {"id": 3, "dayNum": 1, "startTime": "17:00:00", "endTime": "18:15:00", "chapter": "Самостійна", "subject": "Самостійна підготовка", "abbr": "СП", "classType": "(П)", "location": "Клас", "hours": 2, "topic": "Тема 3", "notes": ""},
-                        {"id": 4, "dayNum": 1, "startTime": "12:00:00", "endTime": "13:30:00", "chapter": "Індивідуальна", "subject": "Тактична підготовка", "abbr": "ТП 5/1", "classType": "(П)", "location": "Поле", "hours": 2, "topic": "Тема 4", "notes": ""}
+                        {"id": 1, "dayNum": 1, "startTime": "08:30:00", "endTime": "10:00:00", "chapter": "БЗВП", "subject": "Вогнева підготовка", "abbr": "ВП 1/5", "classType": "(П)", "location": "Тир", "hours": 2, "topic": "", "notes": ""},
+                        {"id": 2, "dayNum": 1, "startTime": "10:15:00", "endTime": "11:45:00", "chapter": "БЗВП", "subject": "Тактична підготовка", "abbr": "ТП 3/1", "classType": "(П)", "location": "Поле", "hours": 2, "topic": "", "notes": ""}
                     ]
                 }
             ],
@@ -35,16 +33,17 @@ class MilitaryMobileApp:
 
     def build_main_ui(self, page: ft.Page):
         self.page = page
-        self.page.title = "Хронологічний менеджер БЗВП"
+        self.page.title = "Менеджер БЗВП — Повний Екран Рот"
         self.page.theme_mode = ft.ThemeMode.DARK
         self.page.padding = 10
         
-        self.tabs_container = ft.Tabs(selected_index=0, animation_duration=200, expand=True)
+        self.grid_scroll_row = ft.Row(scroll=ft.ScrollMode.ALWAYS, spacing=15, expand=True)
+        
         self.source_dropdown = ft.Dropdown(
-            label="Категорія", width=140, on_change=self.on_source_changed, value="templates",
+            label="Категорія даних", width=140, on_change=self.on_source_changed, value="templates",
             options=[ft.dropdown.Option("templates", "Шаблони"), ft.dropdown.Option("algorithms", "Алгоритми")]
         )
-        self.filter_dropdown = ft.Dropdown(label="Взвод / Напрямок", expand=True, on_change=self.on_filter_changed)
+        self.filter_dropdown = ft.Dropdown(label="Вибір Роти / Взводу", expand=True, on_change=self.on_filter_changed)
 
         self.page.add(
             ft.Row([
@@ -54,7 +53,7 @@ class MilitaryMobileApp:
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
             ft.Row([self.source_dropdown, self.filter_dropdown]),
             ft.Divider(),
-            self.tabs_container
+            self.grid_scroll_row
         )
 
         self.pick_file_dialog = ft.FilePicker(on_result=self.on_file_picked)
@@ -62,30 +61,37 @@ class MilitaryMobileApp:
         self.json_data = self.embedded_json
         self.update_filter_dropdown("templates")
     def on_file_picked(self, e: ft.FilePickerResultEvent):
-        if not e.files: return
+        if not e.files or not e.files.path: return
         try:
-            with open(e.files[0].path, "r", encoding="utf-8") as f:
-                self.json_data = json.load(f)
-            self.update_filter_dropdown(self.source_dropdown.value)
+            with open(e.files.path, "r", encoding="utf-8") as f:
+                parsed_data = json.load(f)
+            
+            if "templates" in parsed_data or "algorithms" in parsed_data:
+                self.json_data = parsed_data
+                self.source_dropdown.value = "templates"
+                self.update_filter_dropdown("templates")
+                self.page.show_snack_bar(ft.SnackBar(ft.Text("Розклад успішно завантажено!"), open=True))
+            else:
+                self.page.show_snack_bar(ft.SnackBar(ft.Text("Помилка структури розкладу у вашому JSON файлі!"), open=True))
         except Exception as ex:
-            self.page.show_snack_bar(ft.SnackBar(ft.Text(f"Помилка зчитування JSON: {ex}")))
+            self.page.show_snack_bar(ft.SnackBar(ft.Text(f"Помилка імпорту розкладу: {str(ex)}"), open=True))
 
     def on_source_changed(self, e):
         self.update_filter_dropdown(self.source_dropdown.value)
 
     def update_filter_dropdown(self, key):
-        if key in self.json_data:
+        if key in self.json_data and self.json_data[key]:
             self.filter_dropdown.options = [ft.dropdown.Option(item["name"]) for item in self.json_data[key]]
-            if self.json_data[key]:
-                self.filter_dropdown.value = self.json_data[key][0]["name"]
-                self.render_calendar_tabs(self.filter_dropdown.value)
-            else:
-                self.filter_dropdown.value = None
-                self.tabs_container.tabs.clear()
-            self.page.update()
+            self.filter_dropdown.value = self.json_data[key]["name"]
+            self.render_calendar_grid(self.filter_dropdown.value)
+        else:
+            self.filter_dropdown.options = []
+            self.filter_dropdown.value = None
+            self.grid_scroll_row.controls.clear()
+        self.page.update()
 
     def on_filter_changed(self, e):
-        self.render_calendar_tabs(self.filter_dropdown.value)
+        self.render_calendar_grid(self.filter_dropdown.value)
 
     def get_day_sort_key(self, day_title):
         title_lower = str(day_title).lower()
@@ -97,8 +103,12 @@ class MilitaryMobileApp:
                 return (1, num, title_lower)
             except: return (1, 999, title_lower)
         return (2, 999, title_lower)
-    def render_calendar_tabs(self, selected_name):
-        self.tabs_container.tabs.clear()
+    def render_calendar_grid(self, selected_name):
+        self.grid_scroll_row.controls.clear()
+        if not selected_name:
+            self.page.update()
+            return
+            
         source_type = self.source_dropdown.value
         target_group = next((g for g in self.json_data.get(source_type, []) if g["name"] == selected_name), None)
         if not target_group:
@@ -121,16 +131,52 @@ class MilitaryMobileApp:
             if day_key not in days_data: days_data[day_key] = []
             days_data[day_key].append((idx, item))
 
-        for day_title, items_list in sorted(days_data.items(), key=lambda x: self.get_day_sort_key(x)):
-            day_view = ft.Column(scroll=ft.ScrollMode.ADAPTIVE, spacing=10, expand=True)
-            sorted_items = sorted(items_list, key=lambda x: x[1].get("startTime", "00:00:00"))
+        ukr_days_lower = ["понеділок", "вівторок", "середа", "четвер", "п'ятниця", "субота", "неділя"]
+        current_day_name = ukr_days_lower[datetime.now().weekday()]
+        current_date_str = datetime.now().strftime("%Y-%m-%d")
 
+        sorted_days = sorted(days_data.items(), key=lambda x: self.get_day_sort_key(x))
+
+        today_index = None
+        for i, (day_title, _) in enumerate(sorted_days):
+            title_lower = str(day_title).lower()
+            if (current_day_name in title_lower) or (current_date_str in title_lower):
+                today_index = i
+                break
+
+        if today_index is not None and today_index > 0:
+            sorted_days = sorted_days[today_index:] + sorted_days[:today_index]
+
+        for col_idx, (day_title, items_list) in enumerate(sorted_days):
+            day_column = ft.Column(spacing=8, scroll=ft.ScrollMode.ADAPTIVE)
+            
+            title_lower = str(day_title).lower()
+            is_today = (current_day_name in title_lower) or (current_date_str in title_lower)
+
+            day_container = ft.Container(
+                content=day_column, width=210, 
+                bgcolor="#252825" if is_today else "#1E201E", 
+                border_radius=10, padding=8,
+                border=ft.border.all(2, "#00B050" if is_today else "#333633")
+            )
+            
+            day_column.controls.append(
+                ft.Container(
+                    content=ft.Text(day_title + (" (СЬОГОДНІ)" if is_today else ""), weight="bold", size=13, color="white"),
+                    alignment=ft.alignment.center, padding=4, 
+                    bgcolor="#00B050" if is_today else "#2D302D", 
+                    border_radius=6
+                )
+            )
+
+            sorted_items = sorted(items_list, key=lambda x: x.get("startTime", "00:00:00"))
             total_hours = 0
+            
             for global_idx, item in sorted_items:
                 subj = item.get("subject", "")
                 abbr = item.get("abbr", "")
-                start_t = item.get("startTime", "")[:5]
-                end_t = item.get("endTime", "")[:5]
+                start_t = item.get("startTime", "")[:5] if item.get("startTime") else "00:00"
+                end_t = item.get("endTime", "")[:5] if item.get("endTime") else "00:00"
                 try: total_hours += int(item.get("hours", 2))
                 except: total_hours += 2
 
@@ -142,20 +188,22 @@ class MilitaryMobileApp:
                 text_color = "black" if card_color in ["#FFFF00", "#92D050", "#E0E0E0", "#00FF00"] else "white"
 
                 card = ft.Container(
-                    content=ft.ListTile(
-                        leading=ft.Text(f"{start_t}\n{end_t}", size=12, weight="bold", color=text_color, text_align=ft.TextAlign.CENTER),
-                        title=ft.Text(f"{subj} {abbr}".strip(), size=14, weight="bold", color=text_color),
-                        subtitle=ft.Text(f"{item.get('classType','')} | {item.get('location','')}\n{item.get('instructor','')}".strip(), size=11, color=text_color),
-                        trailing=ft.Row([
-                            ft.IconButton(ft.icons.EDIT, icon_color=text_color, icon_size=18, on_click=lambda _, idx=global_idx: self.open_mobile_modal(idx)),
-                            ft.IconButton(ft.icons.DELETE, icon_color="#FF4D4D", icon_size=18, on_click=lambda _, idx=global_idx: self.delete_mobile_item(idx))
-                        ], tight=True, spacing=0),
-                    ), bgcolor=card_color, border_radius=10, padding=4
+                    content=ft.Column([
+                        ft.Row([ft.Text(f"{start_t} - {end_t}", size=11, color=text_color, weight="bold")], alignment=ft.MainAxisAlignment.CENTER),
+                        ft.Text(f"{subj} {abbr}".strip(), size=12, weight="bold", color=text_color, text_align=ft.TextAlign.CENTER),
+                        ft.Text(f"{item.get('classType','')} {item.get('location','')}".strip(), size=10, color=text_color),
+                        ft.Row([
+                            ft.IconButton(ft.icons.EDIT, icon_color=text_color, icon_size=16, on_click=lambda _, idx=global_idx: self.open_mobile_modal(idx)),
+                            ft.IconButton(ft.icons.DELETE, icon_color="#FF4D4D", icon_size=16, on_click=lambda _, idx=global_idx: self.delete_mobile_item(idx))
+                        ], alignment=ft.MainAxisAlignment.END, spacing=0)
+                    ], spacing=3, alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                    bgcolor=card_color, border_radius=8, padding=6, height=115, width=195
                 )
-                day_view.controls.append(card)
+                day_column.controls.append(card)
             
-            day_view.controls.append(ft.Container(content=ft.Text(f"Всього за день: {total_hours} навчальних годин", weight="bold", size=12, color="#A0A0A0"), alignment=ft.alignment.center, padding=10))
-            self.tabs_container.tabs.append(ft.Tab(text=day_title, content=day_view))
+            day_column.controls.append(ft.Container(content=ft.Text(f"{total_hours} годин", weight="bold", size=11, color="#A0A0A0"), alignment=ft.alignment.center, padding=5))
+            self.grid_scroll_row.controls.append(day_container)
+            
         self.page.update()
     def open_mobile_modal(self, index):
         self.selected_item_index = index
@@ -230,22 +278,23 @@ class MilitaryMobileApp:
         item_data = self.current_items[self.selected_item_index]
         for key, field in self.input_fields.items(): item_data[key] = field.value
         self.close_modal()
-        self.render_calendar_tabs(self.filter_dropdown.value)
+        self.render_calendar_grid(self.filter_dropdown.value)
 
     def close_modal(self):
-        self.page.dialog.open = False
-        self.page.update()
+        if self.page.dialog:
+            self.page.dialog.open = False
+            self.page.update()
 
     def close_gen_modal(self):
-        self.gen_dialog.open = False
-        self.page.update()
+        if self.gen_dialog:
+            self.gen_dialog.open = False
+            self.page.update()
 
     def delete_mobile_item(self, index):
         self.current_items.pop(index)
-        self.render_calendar_tabs(self.filter_dropdown.value)
+        self.render_calendar_grid(self.filter_dropdown.value)
 
     def export_json_file(self, e):
-        # Реалізовано мобільний експорт: зберігає поточний змінений JSON у буфер обміну смартфона та виводить лог
         json_str = json.dumps(self.json_data, ensure_ascii=False, indent=2)
         self.page.set_clipboard(json_str)
         self.page.show_snack_bar(ft.SnackBar(ft.Text("Оновлений JSON скопійовано в буфер обміну телефона!")))
