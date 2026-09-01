@@ -29,16 +29,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Fix Gradle Version Validation
+      - name: Init Flet Project Template
         run: |
-          mkdir -p ~/.config/flet
-          echo '{"android": {"skipDependencyValidation": true}}' > ~/.config/flet/config.json
+          flet create tmp_app
+          mv tmp_app/android .
+          rm -rf tmp_app
           mkdir -p android/gradle/wrapper
           echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.10.2-all.zip" > android/gradle/wrapper/gradle-wrapper.properties
 
       - name: Build Android APK
         run: |
-          flet build apk
+          flet build apk -- --android-skip-build-dependency-validation
       - name: Upload Generated APK Artifact
         uses: actions/upload-artifact@v4
         with:
