@@ -29,16 +29,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Configure Gradle Environment
+      - name: Build Android APK (Forced Flags)
         run: |
-          mkdir -p ~/.config/flet
-          echo '{"android": {"skipDependencyValidation": true}}' > ~/.config/flet/config.json
-          export FLET_ANDROID_SKIP_DEPENDENCY_VALIDATION=true
-          echo "FLET_ANDROID_SKIP_DEPENDENCY_VALIDATION=true" >> $GITHUB_ENV
-
-      - name: Build Android APK
-        run: |
-          flet build apk -- --android-skip-build-dependency-validation
+          flet build apk --no-android-dependencies-validation
       - name: Upload Generated APK Artifact
         uses: actions/upload-artifact@v4
         with:
