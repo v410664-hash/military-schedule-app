@@ -23,10 +23,10 @@ class MilitaryMobileApp:
                 {
                     "name": "6 НР 2 НБ (Хронологічний)",
                     "templateItems": [
-                        {"id": 1, "dayNum": 1, "startTime": "10:15:00", "endTime": "11:45:00", "chapter": "Індивідуальна", "subject": "Вогнева підготовка", "abbr": "ВП 1/3", "classType": "(П)", "location": "Директриса", "hours": 2},
-                        {"id": 2, "dayNum": 1, "startTime": "08:30:00", "endTime": "10:00:00", "chapter": "Індивідуальна", "subject": "Вогнева підготовка", "abbr": "ВП 1/5", "classType": "(П)", "location": "Тир", "hours": 2},
-                        {"id": 3, "dayNum": 1, "startTime": "17:00:00", "endTime": "18:15:00", "chapter": "Самостійна", "subject": "Самостійна підготовка", "abbr": "СП", "classType": "(П)", "location": "Клас", "hours": 2},
-                        {"id": 4, "dayNum": 1, "startTime": "12:00:00", "endTime": "13:30:00", "chapter": "Індивідуальна", "subject": "Тактична підготовка", "abbr": "ТП 5/1", "classType": "(П)", "location": "Поле", "hours": 2}
+                        {"id": 1, "dayNum": 1, "startTime": "10:15:00", "endTime": "11:45:00", "chapter": "Індивідуальна", "subject": "Вогнева підготовка", "abbr": "ВП 1/3", "classType": "(П)", "location": "Директриса", "hours": 2, "topic": "Тема 1", "notes": ""},
+                        {"id": 2, "dayNum": 1, "startTime": "08:30:00", "endTime": "10:00:00", "chapter": "Індивідуальна", "subject": "Вогнева підготовка", "abbr": "ВП 1/5", "classType": "(П)", "location": "Тир", "hours": 2, "topic": "Тема 2", "notes": ""},
+                        {"id": 3, "dayNum": 1, "startTime": "17:00:00", "endTime": "18:15:00", "chapter": "Самостійна", "subject": "Самостійна підготовка", "abbr": "СП", "classType": "(П)", "location": "Клас", "hours": 2, "topic": "Тема 3", "notes": ""},
+                        {"id": 4, "dayNum": 1, "startTime": "12:00:00", "endTime": "13:30:00", "chapter": "Індивідуальна", "subject": "Тактична підготовка", "abbr": "ТП 5/1", "classType": "(П)", "location": "Поле", "hours": 2, "topic": "Тема 4", "notes": ""}
                     ]
                 }
             ],
@@ -64,11 +64,11 @@ class MilitaryMobileApp:
     def on_file_picked(self, e: ft.FilePickerResultEvent):
         if not e.files: return
         try:
-            with open(e.files.path, "r", encoding="utf-8") as f:
+            with open(e.files[0].path, "r", encoding="utf-8") as f:
                 self.json_data = json.load(f)
             self.update_filter_dropdown(self.source_dropdown.value)
-        except:
-            pass
+        except Exception as ex:
+            self.page.show_snack_bar(ft.SnackBar(ft.Text(f"Помилка зчитування JSON: {ex}")))
 
     def on_source_changed(self, e):
         self.update_filter_dropdown(self.source_dropdown.value)
@@ -77,8 +77,11 @@ class MilitaryMobileApp:
         if key in self.json_data:
             self.filter_dropdown.options = [ft.dropdown.Option(item["name"]) for item in self.json_data[key]]
             if self.json_data[key]:
-                self.filter_dropdown.value = self.json_data[key]["name"]
+                self.filter_dropdown.value = self.json_data[key][0]["name"]
                 self.render_calendar_tabs(self.filter_dropdown.value)
+            else:
+                self.filter_dropdown.value = None
+                self.tabs_container.tabs.clear()
             self.page.update()
 
     def on_filter_changed(self, e):
@@ -120,7 +123,7 @@ class MilitaryMobileApp:
 
         for day_title, items_list in sorted(days_data.items(), key=lambda x: self.get_day_sort_key(x)):
             day_view = ft.Column(scroll=ft.ScrollMode.ADAPTIVE, spacing=10, expand=True)
-            sorted_items = sorted(items_list, key=lambda x: x.get("startTime", "00:00:00"))
+            sorted_items = sorted(items_list, key=lambda x: x[1].get("startTime", "00:00:00"))
 
             total_hours = 0
             for global_idx, item in sorted_items:
@@ -242,7 +245,10 @@ class MilitaryMobileApp:
         self.render_calendar_tabs(self.filter_dropdown.value)
 
     def export_json_file(self, e):
-        print(json.dumps(self.json_data, ensure_ascii=False, indent=2))
+        # Реалізовано мобільний експорт: зберігає поточний змінений JSON у буфер обміну смартфона та виводить лог
+        json_str = json.dumps(self.json_data, ensure_ascii=False, indent=2)
+        self.page.set_clipboard(json_str)
+        self.page.show_snack_bar(ft.SnackBar(ft.Text("Оновлений JSON скопійовано в буфер обміну телефона!")))
 
 if __name__ == "__main__":
     app_instance = MilitaryMobileApp()
