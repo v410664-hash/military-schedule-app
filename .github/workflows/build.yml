@@ -29,13 +29,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Create Flet App Configuration
+      - name: Build Android APK
         run: |
-          flet pack main.py --add-data "main.py:." || true
-
-      - name: Build Android Release APK
-        run: |
-          flet build apk --release
+          flet build apk
+        env:
+          FLET_GRADLE_OPTS: ""
 
       - name: Upload Generated APK Artifact
         uses: actions/upload-artifact@v4
