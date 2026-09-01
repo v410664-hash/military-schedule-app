@@ -22,16 +22,17 @@ jobs:
       - name: Set up Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          flutter-version: '3.22.2'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install flet==0.23.2
 
-      - name: Build Android APK (Forced Flags)
+      - name: Build Android APK
         run: |
-          flet build apk --no-android-dependencies-validation
+          flet build apk
+
       - name: Upload Generated APK Artifact
         uses: actions/upload-artifact@v4
         with:
