@@ -16,7 +16,7 @@ jobs:
       - name: Set up Java SDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: 'zulu'
           java-version: '17'
 
       - name: Set up Flutter SDK
@@ -29,9 +29,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Create Flet App Configuration
+        run: |
+          flet pack main.py --add-data "main.py:." || true
+
       - name: Build Android Release APK
         run: |
-          flet build apk
+          flet build apk --release
 
       - name: Upload Generated APK Artifact
         uses: actions/upload-artifact@v4
