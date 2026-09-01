@@ -61,7 +61,7 @@ class MilitaryMobileApp:
     def on_file_picked(self, e: ft.FilePickerResultEvent):
         if not e.files: return
         try:
-            with open(e.files[path], "r", encoding="utf-8") as f:
+            with open(e.files[0].path, "r", encoding="utf-8") as f:
                 self.json_data = json.load(f)
             self.update_filter_dropdown("templates")
         except:
@@ -74,7 +74,7 @@ class MilitaryMobileApp:
         if key in self.json_data:
             self.filter_dropdown.options = [ft.dropdown.Option(item["name"]) for item in self.json_data[key]]
             if self.json_data[key]:
-                self.filter_dropdown.value = self.json_data[key]["name"]
+                self.filter_dropdown.value = self.json_data[key][0]["name"]
                 self.render_calendar_grid(self.filter_dropdown.value)
             self.page.update()
 
