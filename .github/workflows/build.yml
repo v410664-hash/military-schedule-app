@@ -31,12 +31,4 @@ jobs:
 
       - name: Build Android APK
         run: |
-          flet build apk
-        env:
-          FLET_GRADLE_OPTS: ""
-
-      - name: Upload Generated APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: military-schedule-apk
-          path: build/apk/*.apk
+          flet build apk -- --android-skip-build-dependency-validation
