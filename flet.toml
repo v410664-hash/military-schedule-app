@@ -1,3 +1,9 @@
-git add .
-git commit -m "Виправлено назву файлу залежностей та додано конфігураційні файли .gitignore та flet.toml"
-git push
+[app]
+name = "MilitaryMobileApp"
+product_name = "Менеджер БЗВП"
+description = "Менеджер розкладу БЗВП з інтегрованими SVG-іконками"
+org = "com.military.bzvp"
+version = "1.0.0"
+
+[web]
+title = "Менеджер БЗВП"
