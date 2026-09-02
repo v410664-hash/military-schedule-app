@@ -1,3 +1,4 @@
+# Блок 2: Повний виправлений код (Частина 1: Імпорт, Мапи констант та Конструктор)
 import json
 import flet as ft
 from datetime import datetime, timedelta
@@ -41,6 +42,7 @@ class MilitaryMobileApp:
             ],
             "algorithms": []
         }
+# Блок 3: Повний виправлений код (Частина 2: Головна UI Панель керування та Файлові віджети)
     def build_main_ui(self, page: ft.Page):
         self.page = page
         self.page.title = "Менеджер БЗВП — Повний Екран Рот"
@@ -83,6 +85,7 @@ class MilitaryMobileApp:
         
         self.json_data = self.embedded_json
         self.update_filter_dropdown("templates")
+# Блок 4: Повний виправлений код (Частина 3: Валідація JSON та Безпечний розбір випадаючих списків)
     def on_file_picked(self, e: ft.FilePickerResultEvent):
         if not e.files or not e.files.path: return
         try:
@@ -104,18 +107,14 @@ class MilitaryMobileApp:
 
     def on_source_changed(self, e):
         self.update_filter_dropdown(self.source_dropdown.value)
+
     def update_filter_dropdown(self, key):
-        if self.json_data and key in self.json_data and self.json_data[key]:
+        # ЗАХИСТ ВІД ЧОРНОГО ЕКРАНУ: Перевіряємо наявність та наповненість списку перед зверненням до індексу
+        if self.json_data and key in self.json_data and isinstance(self.json_data[key], list) and len(self.json_data[key]) > 0:
             items = self.json_data[key]
             self.filter_dropdown.options = [ft.dropdown.Option(item["name"]) for item in items if "name" in item]
-            if len(items) > 0:
-                # КРИТИЧНЕ ВИПРАВЛЕННЯ: items є списком, тому items["name"] викликав аварійне завершення (чорний екран).
-                # Тепер ми беремо елемент за правильним індексом: items[0]["name"]
-                self.filter_dropdown.value = items[0]["name"]
-                self.render_calendar_grid(self.filter_dropdown.value)
-            else:
-                self.filter_dropdown.value = None
-                self.grid_scroll_row.controls.clear()
+            self.filter_dropdown.value = items[0]["name"]
+            self.render_calendar_grid(self.filter_dropdown.value)
         else:
             self.filter_dropdown.options = []
             self.filter_dropdown.value = None
@@ -124,10 +123,11 @@ class MilitaryMobileApp:
 
     def on_filter_changed(self, e):
         self.render_calendar_grid(self.filter_dropdown.value)
-    def get_day_sort_key(self, item_tuple):
-        day_title = item_tuple[0]  # Виправлено розбір кортежу з items()
-        title_lower = str(day_title).lower()
+# Блок 5: Повний виправлений код (Частина 4: Валідація сортування ключів гріда)
+    def get_day_sort_key(self, key_string):
+        title_lower = str(key_string).lower()
         
+        # Перевірка на формат ISO календарної дати YYYY-MM-DD
         if len(title_lower) >= 10 and title_lower[0:4].isdigit() and "-" in title_lower:
             return (0, title_lower)
             
@@ -143,6 +143,7 @@ class MilitaryMobileApp:
                 return (2, order)
                 
         return (3, title_lower)
+# Блок 6: Повний виправлений код (Частина 5: Обробка та Рендеринг Календарної Сітки занять)
     def render_calendar_grid(self, selected_name):
         self.grid_scroll_row.controls.clear()
         if not selected_name:
@@ -178,8 +179,9 @@ class MilitaryMobileApp:
         current_day_name = ukr_days_lower[datetime.now().weekday()]
         current_date_str = datetime.now().strftime("%Y-%m-%d")
 
-        # Виправлено передачу аргументів у функцію сортування словника
-        sorted_days = sorted(days_data.items(), key=self.get_day_sort_key)
+        # ВИПРАВЛЕНО: передаємо в лямбду x[0], щоб сортувати суворо за рядком назви дня (day_title)
+        sorted_days = sorted(days_data.items(), key=lambda x: self.get_day_sort_key(x[0]))
+# Блок 7: Повний виправлений код (Частина 6: Побудова контейнерів днів та підрахунок годин занять)
         today_col_index = None
         for col_idx, (day_title, items_list) in enumerate(sorted_days):
             day_column = ft.Column(spacing=8, scroll=ft.ScrollMode.ADAPTIVE, expand=True)
@@ -203,6 +205,7 @@ class MilitaryMobileApp:
                     border_radius=6
                 )
             )
+# Блок 8: Повний виправлений код (Частина 7: Динамічне фарбування карток занять)
             for global_idx, item in sorted_items:
                 subj = item.get("subject", "Невідомо")
                 abbr = item.get("abbr", "")
@@ -250,6 +253,7 @@ class MilitaryMobileApp:
                 self.grid_scroll_row.scroll_to(index=today_col_index, duration=500)
             except:
                 pass
+# Блок 9: Повний виправлений код (Частина 8: Контролери форм Редагування та Видалення)
     def on_item_click(self, idx):
         self.selected_item_index = idx
         item = self.current_items[idx]
@@ -289,6 +293,7 @@ class MilitaryMobileApp:
             self.page.dialog.open = False
             self.render_calendar_grid(self.filter_dropdown.value)
             self.page.show_snack_bar(ft.SnackBar(ft.Text("Заняття видалено!"), open=True))
+
         self.page.dialog = ft.AlertDialog(
             title=ft.Text("Редагування заняття"),
             content=ft.Container(
@@ -306,6 +311,7 @@ class MilitaryMobileApp:
         )
         self.page.dialog.open = True
         self.page.update()
+# Блок 10: Повний виправлений код (Частина 9: Обробка створення нових сутностей розкладу)
     def open_add_item_modal(self, e):
         if not self.filter_dropdown.value:
             self.page.show_snack_bar(ft.SnackBar(ft.Text("Спочатку оберіть або додайте підрозділ!"), open=True))
@@ -341,7 +347,8 @@ class MilitaryMobileApp:
             self.current_items.append(new_item)
             self.page.dialog.open = False
             self.render_calendar_grid(self.filter_dropdown.value)
-            self.page.show_snack_bar(ft.SnackBar(ft.Text("Нове заняття успешно додано!"), open=True))
+            self.page.show_snack_bar(ft.SnackBar(ft.Text("Нове заняття успішно додано!"), open=True))
+
         self.page.dialog = ft.AlertDialog(
             title=ft.Text("Додати нове заняття"),
             content=ft.Container(
@@ -358,6 +365,7 @@ class MilitaryMobileApp:
         )
         self.page.dialog.open = True
         self.page.update()
+# Блок 11: Повний виправлений код (Частина 10: Управління списками рот/взводів та точка входу)
     def open_add_group_modal(self, e):
         name_input = ft.TextField(label="Назва підрозділу (Роти / Взводу)", placeholder="Наприклад: 2 Рота 1 Взвод", width=250)
 
@@ -407,6 +415,7 @@ class MilitaryMobileApp:
             groups_list.remove(target_group)
             self.page.show_snack_bar(ft.SnackBar(ft.Text(f"Підрозділ '{selected_name}' видалено!"), open=True))
             self.update_filter_dropdown(source_key)
+
     def open_generate_week_modal(self, e):
         def confirm_generation(_):
             try:
@@ -446,6 +455,7 @@ class MilitaryMobileApp:
         )
         self.page.dialog.open = True
         self.page.update()
+
     def on_file_saved(self, e: ft.FilePickerResultEvent):
         if not e.path: return
         try:
