@@ -1,0 +1,3 @@
+git add .
+git commit -m "Виправлено назву файлу залежностей та додано конфігураційні файли .gitignore та flet.toml"
+git push
