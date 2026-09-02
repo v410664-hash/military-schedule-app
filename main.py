@@ -1,3 +1,4 @@
+# Блок 1: Оновлена ініціалізація та головний інтерфейс з інтегрованою SVG-іконкою
 import json
 import flet as ft
 from datetime import datetime, timedelta
@@ -11,6 +12,16 @@ DAYS_ORDER = {
     "понеділок": 1, "вівторок": 2, "середа": 3, "четвер": 4, 
     "п'ятниця": 5, "субота": 6, "неділя": 7
 }
+
+SVG_MILITARY_ICON = """<svg xmlns="http://w3.org" viewBox="0 0 100 100" width="100" height="100">
+  <circle cx="50" cy="50" r="40" fill="none" stroke="#00B050" stroke-width="3" />
+  <circle cx="50" cy="50" r="43" fill="none" stroke="#00B050" stroke-width="1" stroke-dasharray="4 2" />
+  <line x1="50" y1="5" x2="50" y2="25" stroke="#00B050" stroke-width="3" />
+  <line x1="50" y1="75" x2="50" y2="95" stroke="#00B050" stroke-width="3" />
+  <line x1="5" y1="50" x2="25" y2="50" stroke="#00B050" stroke-width="3" />
+  <line x1="75" y1="50" x2="95" y2="50" stroke="#00B050" stroke-width="3" />
+  <path d="M35 42 L50 55 L65 42 M35 52 L50 65 L65 52" fill="none" stroke="#FFD700" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>"""
 
 class MilitaryMobileApp:
     def __init__(self):
@@ -30,6 +41,7 @@ class MilitaryMobileApp:
             ],
             "algorithms": []
         }
+# Блок 2: Побудова головного UI з логотипом та кнопками керування підрозділами й заняттями
     def build_main_ui(self, page: ft.Page):
         self.page = page
         self.page.title = "Менеджер БЗВП — Повний Екран Рот"
@@ -46,9 +58,20 @@ class MilitaryMobileApp:
 
         self.page.add(
             ft.Row([
-                ft.ElevatedButton("📁 JSON", icon=ft.icons.FOLDER_OPEN, on_click=lambda _: self.pick_file_dialog.pick_files()),
-                ft.ElevatedButton("📅 Тиждень", icon=ft.icons.DATE_RANGE, on_click=self.open_generate_week_modal),
-                ft.ElevatedButton("📤 Експорт", icon=ft.icons.SAVE, on_click=lambda _: self.save_file_dialog.save_file(file_name="schedule.json"))
+                ft.Row([
+                    ft.Image(src_svg=SVG_MILITARY_ICON, width=32, height=32, fit=ft.ImageFit.CONTAIN),
+                    ft.Text("Менеджер БЗВП", size=16, weight="bold", color="white")
+                ], spacing=8),
+                ft.Row([
+                    ft.ElevatedButton("📁 JSON", icon=ft.icons.FOLDER_OPEN, on_click=lambda _: self.pick_file_dialog.pick_files()),
+                    ft.ElevatedButton("📅 Тиждень", icon=ft.icons.DATE_RANGE, on_click=self.open_generate_week_modal),
+                    ft.ElevatedButton("📤 Експорт", icon=ft.icons.SAVE, on_click=lambda _: self.save_file_dialog.save_file(file_name="schedule.json")),
+                ]),
+                ft.Row([
+                    ft.IconButton(ft.icons.GROUP_ADD, tooltip="Додати підрозділ", icon_color="#4CAF50", on_click=self.open_add_group_modal),
+                    ft.IconButton(ft.icons.DELETE_SWEEP, tooltip="Видалити цей підрозділ", icon_color="#E53935", on_click=self.delete_current_group),
+                    ft.ElevatedButton("➕ Заняття", icon=ft.icons.ADD_CARD, bgcolor="#2E7D32", on_click=self.open_add_item_modal)
+                ])
             ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
             ft.Row([self.source_dropdown, self.filter_dropdown]),
             ft.Divider(),
@@ -61,27 +84,20 @@ class MilitaryMobileApp:
         
         self.json_data = self.embedded_json
         self.update_filter_dropdown("templates")
+# Блок 3: Обробка вибору файлів, категорій та фільтрації підрозділів
     def on_file_picked(self, e: ft.FilePickerResultEvent):
-        if not e.files and not getattr(e, "path", None):
-            return
+        if not e.files or not e.files.path: return
         try:
-            file_path = None
-            if e.files and len(e.files) > 0:
-                file_path = e.files[0].path if hasattr(e.files, "__getitem__") else e.files.path
-            elif getattr(e, "path", None):
-                file_path = e.path
-                
-            if not file_path:
-                return
-
+            file_path = e.files.path
             with open(file_path, "r", encoding="utf-8") as f:
                 parsed_data = json.load(f)
             
-            if isinstance(parsed_data, dict) and len(parsed_data) > 0:
+            if isinstance(parsed_data, dict) and ("templates" in parsed_data or "algorithms" in parsed_data):
                 self.json_data = parsed_data
-                first_key = list(parsed_data.keys())[0]
-                self.source_dropdown.value = first_key
-                self.update_filter_dropdown(first_key)
+                if "templates" not in self.json_data: self.json_data["templates"] = []
+                if "algorithms" not in self.json_data: self.json_data["algorithms"] = []
+                self.source_dropdown.value = "templates" if self.json_data["templates"] else "algorithms"
+                self.update_filter_dropdown(self.source_dropdown.value)
                 self.page.show_snack_bar(ft.SnackBar(ft.Text("Розклад успішно завантажено!"), open=True))
             else:
                 self.page.show_snack_bar(ft.SnackBar(ft.Text("Помилка структури розкладу у вашому JSON файлі!"), open=True))
@@ -90,11 +106,12 @@ class MilitaryMobileApp:
 
     def on_source_changed(self, e):
         self.update_filter_dropdown(self.source_dropdown.value)
+# Блок 4: Синхронізація списку підрозділів та визначення критеріїв сортування за реальними датами
     def update_filter_dropdown(self, key):
         if self.json_data and key in self.json_data and self.json_data[key]:
             items = self.json_data[key]
             self.filter_dropdown.options = [ft.dropdown.Option(item["name"]) for item in items if "name" in item]
-            if len(items) > 0 and "name" in items[0]:
+            if len(items) > 0:
                 self.filter_dropdown.value = items[0]["name"]
                 self.render_calendar_grid(self.filter_dropdown.value)
             else:
@@ -128,6 +145,7 @@ class MilitaryMobileApp:
                 return (2, order)
                 
         return (3, title_lower)
+# Блок 5: Логіка рендерингу сітки календаря з автоматичним фокусуванням та прокруткою на сьогодні
     def render_calendar_grid(self, selected_name):
         self.grid_scroll_row.controls.clear()
         if not selected_name:
@@ -164,11 +182,15 @@ class MilitaryMobileApp:
         current_date_str = datetime.now().strftime("%Y-%m-%d")
 
         sorted_days = sorted(days_data.items(), key=self.get_day_sort_key)
+# Блок 6: Побудова контейнерів днів та генерація карток занять для розкладу підрозділу
+        today_col_index = None
         for col_idx, (day_title, items_list) in enumerate(sorted_days):
             day_column = ft.Column(spacing=8, scroll=ft.ScrollMode.ADAPTIVE, expand=True)
-            
             title_lower = str(day_title).lower()
             is_today = (current_day_name in title_lower) or (current_date_str in title_lower)
+
+            if is_today:
+                today_col_index = col_idx
 
             sorted_items = sorted(items_list, key=lambda x: x[1].get("startTime", "00:00:00"))
             total_hours = sum(int(item.get("hours", 0)) for _, item in sorted_items)
@@ -184,6 +206,7 @@ class MilitaryMobileApp:
                     border_radius=6
                 )
             )
+# Блок 7: Цикл обходу занять дня з призначенням кольорів дисциплін та обробником кліку
             for global_idx, item in sorted_items:
                 subj = item.get("subject", "Невідомо")
                 abbr = item.get("abbr", "")
@@ -214,23 +237,186 @@ class MilitaryMobileApp:
                     on_click=lambda _, idx=global_idx: self.on_item_click(idx)
                 )
                 day_column.controls.append(card)
+
             day_container = ft.Container(
-                content=day_column, 
-                width=220, 
+                content=day_column, width=220, 
                 bgcolor="#202220" if is_today else "#161716", 
-                border_radius=10, 
-                padding=8,
+                border_radius=10, padding=8,
                 border=ft.border.all(2, "#00B050" if is_today else "#2D302D"),
                 height=550
             )
             self.grid_scroll_row.controls.append(day_container)
             
         self.page.update()
-
+        
+        if today_col_index is not None:
+            try:
+                self.grid_scroll_row.scroll_to(index=today_col_index, duration=500)
+            except:
+                pass
+# Блок 8: Створення інтерактивного модального вікна для редагування та видалення занять
     def on_item_click(self, idx):
         self.selected_item_index = idx
         item = self.current_items[idx]
-        self.page.show_snack_bar(ft.SnackBar(ft.Text(f"Обрано: {item.get('subject')} ({item.get('abbr')})"), open=True))
+        
+        day_input = ft.TextField(label="Номер дня / Дата (YYYY-MM-DD)", value=str(item.get("dayNum", item.get("date", ""))), width=250)
+        start_input = ft.TextField(label="Час початку (HH:MM:SS)", value=item.get("startTime", "00:00:00"), width=250)
+        end_input = ft.TextField(label="Час закінчення (HH:MM:SS)", value=item.get("endTime", "00:00:00"), width=250)
+        subject_input = ft.TextField(label="Предмет", value=item.get("subject", ""), width=250)
+        abbr_input = ft.TextField(label="Абревіатура", value=item.get("abbr", ""), width=250)
+        ctype_input = ft.TextField(label="Тип (П) / (Л)", value=item.get("classType", ""), width=250)
+        loc_input = ft.TextField(label="Локація", value=item.get("location", ""), width=250)
+        hours_input = ft.TextField(label="Кількість годин", value=str(item.get("hours", 2)), width=250)
+
+        def save_edited_item(_):
+            val = day_input.value
+            if "-" in val:
+                item["date"] = val
+                item.pop("dayNum", None)
+            else:
+                item["dayNum"] = int(val) if val.isdigit() else 1
+                item.pop("date", None)
+                
+            item["startTime"] = start_input.value
+            item["endTime"] = end_input.value
+            item["subject"] = subject_input.value
+            item["abbr"] = abbr_input.value
+            item["classType"] = ctype_input.value
+            item["location"] = loc_input.value
+            item["hours"] = int(hours_input.value) if hours_input.value.isdigit() else 2
+            
+            self.page.dialog.open = False
+            self.render_calendar_grid(self.filter_dropdown.value)
+            self.page.show_snack_bar(ft.SnackBar(ft.Text("Заняття оновлено!"), open=True))
+
+        def delete_item(_):
+            self.current_items.pop(idx)
+            self.page.dialog.open = False
+            self.render_calendar_grid(self.filter_dropdown.value)
+            self.page.show_snack_bar(ft.SnackBar(ft.Text("Заняття видалено!"), open=True))
+# Блок 9: Відображення AlertDialog для редагування заняття
+        self.page.dialog = ft.AlertDialog(
+            title=ft.Text("Редагування заняття"),
+            content=ft.Container(
+                content=ft.Column([
+                    day_input, start_input, end_input, subject_input,
+                    abbr_input, ctype_input, loc_input, hours_input
+                ], scroll=ft.ScrollMode.ADAPTIVE, tight=True),
+                height=350, width=280
+            ),
+            actions=[
+                ft.TextButton("Видалити", icon=ft.icons.DELETE, icon_color="red", on_click=delete_item),
+                ft.TextButton("Скасувати", on_click=lambda _: setattr(self.page.dialog, "open", False) or self.page.update()),
+                ft.ElevatedButton("Зберегти", on_click=save_edited_item)
+            ]
+        )
+        self.page.dialog.open = True
+        self.page.update()
+# Блок 10: Реалізація функціоналу додавання нового заняття для поточного підрозділу
+    def open_add_item_modal(self, e):
+        if not self.filter_dropdown.value:
+            self.page.show_snack_bar(ft.SnackBar(ft.Text("Спочатку оберіть або додайте підрозділ!"), open=True))
+            return
+
+        day_input = ft.TextField(label="Номер дня або Дата (YYYY-MM-DD)", value="1", width=250)
+        start_input = ft.TextField(label="Час початку (HH:MM:SS)", value="08:30:00", width=250)
+        end_input = ft.TextField(label="Час закінчення (HH:MM:SS)", value="10:00:00", width=250)
+        subject_input = ft.TextField(label="Предмет", placeholder="Введіть назву", width=250)
+        abbr_input = ft.TextField(label="Абревіатура (напр. ВП 1/2)", placeholder="ВП", width=250)
+        ctype_input = ft.TextField(label="Тип занять (П)/(Л)", value="(П)", width=250)
+        loc_input = ft.TextField(label="Локація", value="Поле", width=250)
+        hours_input = ft.TextField(label="Години", value="2", width=250)
+
+        def confirm_add(_):
+            new_item = {
+                "id": len(self.current_items) + 1,
+                "startTime": start_input.value,
+                "endTime": end_input.value,
+                "subject": subject_input.value if subject_input.value else "Нове заняття",
+                "abbr": abbr_input.value if abbr_input.value else "СП",
+                "classType": ctype_input.value,
+                "location": loc_input.value,
+                "hours": int(hours_input.value) if hours_input.value.isdigit() else 2,
+                "chapter": "БЗВП", "topic": "", "notes": ""
+            }
+            val = day_input.value
+            if "-" in val:
+                new_item["date"] = val
+            else:
+                new_item["dayNum"] = int(val) if val.isdigit() else 1
+
+            self.current_items.append(new_item)
+            self.page.dialog.open = False
+            self.render_calendar_grid(self.filter_dropdown.value)
+            self.page.show_snack_bar(ft.SnackBar(ft.Text("Нове заняття успішно додано!"), open=True))
+# Блок 11: Відображення модального вікна додавання заняття
+        self.page.dialog = ft.AlertDialog(
+            title=ft.Text("Додати нове заняття"),
+            content=ft.Container(
+                content=ft.Column([
+                    day_input, start_input, end_input, subject_input,
+                    abbr_input, ctype_input, loc_input, hours_input
+                ], scroll=ft.ScrollMode.ADAPTIVE, tight=True),
+                height=350, width=280
+            ),
+            actions=[
+                ft.TextButton("Скасувати", on_click=lambda _: setattr(self.page.dialog, "open", False) or self.page.update()),
+                ft.ElevatedButton("Додати", on_click=confirm_add)
+            ]
+        )
+        self.page.dialog.open = True
+        self.page.update()
+# Блок 12: Керування підрозділами — діалог створення та логіка видалення поточного взводу чи роти
+    def open_add_group_modal(self, e):
+        name_input = ft.TextField(label="Назва підрозділу (Роти / Взводу)", placeholder="Наприклад: 2 Рота 1 Взвод", width=250)
+
+        def confirm_group(_):
+            if not name_input.value: return
+            source_key = self.source_dropdown.value
+            item_key = "templateItems" if source_key == "templates" else "algorithmItems"
+            
+            new_group = {
+                "name": name_input.value,
+                item_key: []
+            }
+            
+            if source_key not in self.json_data:
+                self.json_data[source_key] = []
+                
+            self.json_data[source_key].append(new_group)
+            self.page.dialog.open = False
+            
+            self.filter_dropdown.options.append(ft.dropdown.Option(name_input.value))
+            self.filter_dropdown.value = name_input.value
+            self.render_calendar_grid(name_input.value)
+            self.page.show_snack_bar(ft.SnackBar(ft.Text(f"Підрозділ '{name_input.value}' створено!"), open=True))
+
+        self.page.dialog = ft.AlertDialog(
+            title=ft.Text("Створити підрозділ"),
+            content=ft.Column([name_input], tight=True),
+            actions=[
+                ft.TextButton("Скасувати", on_click=lambda _: setattr(self.page.dialog, "open", False) or self.page.update()),
+                ft.ElevatedButton("Створити", on_click=confirm_group)
+            ]
+        )
+        self.page.dialog.open = True
+        self.page.update()
+
+    def delete_current_group(self, e):
+        selected_name = self.filter_dropdown.value
+        if not selected_name:
+            self.page.show_snack_bar(ft.SnackBar(ft.Text("Немає вибраного підрозділу для видалення!"), open=True))
+            return
+            
+        source_key = self.source_dropdown.value
+        groups_list = self.json_data.get(source_key, [])
+        target_group = next((g for g in groups_list if g["name"] == selected_name), None)
+        
+        if target_group:
+            groups_list.remove(target_group)
+            self.page.show_snack_bar(ft.SnackBar(ft.Text(f"Підрозділ '{selected_name}' видалено!"), open=True))
+            self.update_filter_dropdown(source_key)
+# Блок 13: Модальне вікно автоматичної генерації дат тижня та збереження структури у файл
     def open_generate_week_modal(self, e):
         def confirm_generation(_):
             try:
@@ -255,6 +441,7 @@ class MilitaryMobileApp:
 
         date_input = ft.TextField(label="Дата Понеділка (YYYY-MM-DD)", value=datetime.now().strftime("%Y-%m-%d"), width=250)
         error_txt = ft.Text(color="red")
+
         self.page.dialog = ft.AlertDialog(
             title=ft.Text("Генерація дат на тиждень"),
             content=ft.Column([
@@ -269,9 +456,15 @@ class MilitaryMobileApp:
         )
         self.page.dialog.open = True
         self.page.update()
+
     def on_file_saved(self, e: ft.FilePickerResultEvent):
-        # Логіка збереження файлу залишається без змін
-        pass
+        if not e.path: return
+        try:
+            with open(e.path, "w", encoding="utf-8") as f:
+                json.dump(self.json_data, f, ensure_ascii=False, indent=4)
+            self.page.show_snack_bar(ft.SnackBar(ft.Text("Файл успішно збережено!"), open=True))
+        except Exception as ex:
+            self.page.show_snack_bar(ft.SnackBar(ft.Text(f"Помилка збереження: {str(ex)}"), open=True))
 
 def main(page: ft.Page):
     app = MilitaryMobileApp()
