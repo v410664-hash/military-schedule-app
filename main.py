@@ -62,9 +62,10 @@ class MilitaryMobileApp:
         self.json_data = self.embedded_json
         self.update_filter_dropdown("templates")
     def on_file_picked(self, e: ft.FilePickerResultEvent):
-        if not e.files or not e.files.path: return
+        if not e.files or not e.files[0].path: return
         try:
-            with open(e.files.path, "r", encoding="utf-8") as f:
+            file_path = e.files[0].path
+            with open(file_path, "r", encoding="utf-8") as f:
                 parsed_data = json.load(f)
             
             if "templates" in parsed_data or "algorithms" in parsed_data:
@@ -156,7 +157,7 @@ class MilitaryMobileApp:
             is_today = (current_day_name in title_lower) or (current_date_str in title_lower)
 
             sorted_items = sorted(items_list, key=lambda x: x[1].get("startTime", "00:00:00"))
-            total_hours = sum(int(item.get("hours", 0)) for _, item in sorted_items)
+            total_hours = sum(int(item[1].get("hours", 0)) for item in sorted_items)
             
             header_text = f"{day_title} [{total_hours} год]"
             if is_today: header_text += " (СЬОГОДНІ)"
