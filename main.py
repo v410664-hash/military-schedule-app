@@ -1,4 +1,4 @@
-# Блок 2: Повний виправлений код (Частина 1: Імпорт, Мапи констант та Конструктор)
+# Блок 2: Повний виправлений код main.py (Частина 1: Імпорт, Мапи та Конструктор класу)
 import json
 import flet as ft
 from datetime import datetime, timedelta
@@ -42,7 +42,7 @@ class MilitaryMobileApp:
             ],
             "algorithms": []
         }
-# Блок 3: Повний виправлений код (Частина 2: Головна UI Панель керування та Файлові віджети)
+# Блок 3: Повний виправлений код main.py (Частина 2: Інтерфейс UI Панелі)
     def build_main_ui(self, page: ft.Page):
         self.page = page
         self.page.title = "Менеджер БЗВП — Повний Екран Рот"
@@ -85,7 +85,7 @@ class MilitaryMobileApp:
         
         self.json_data = self.embedded_json
         self.update_filter_dropdown("templates")
-# Блок 4: Повний виправлений код (Частина 3: Валідація JSON та Безпечний розбір випадаючих списків)
+# Блок 4: Повний виправлений код main.py (Частина 3: Безпечна фільтрація та Ключі сортування)
     def on_file_picked(self, e: ft.FilePickerResultEvent):
         if not e.files or not e.files.path: return
         try:
@@ -99,7 +99,6 @@ class MilitaryMobileApp:
                 if "algorithms" not in self.json_data: self.json_data["algorithms"] = []
                 self.source_dropdown.value = "templates" if self.json_data["templates"] else "algorithms"
                 self.update_filter_dropdown(self.source_dropdown.value)
-                self.page.show_snack_bar(ft.SnackBar(ft.Text("Розклад успішно завантажено!"), open=True))
             else:
                 self.page.show_snack_bar(ft.SnackBar(ft.Text("Помилка структури розкладу у вашому JSON файлі!"), open=True))
         except Exception as ex:
@@ -109,13 +108,17 @@ class MilitaryMobileApp:
         self.update_filter_dropdown(self.source_dropdown.value)
 
     def update_filter_dropdown(self, key):
-        # ЗАХИСТ ВІД ЧОРНОГО ЕКРАНУ: Перевіряємо наявність та наповненість списку перед зверненням до індексу
-        if self.json_data and key in self.json_data and isinstance(self.json_data[key], list) and len(self.json_data[key]) > 0:
-            items = self.json_data[key]
-            self.filter_dropdown.options = [ft.dropdown.Option(item["name"]) for item in items if "name" in item]
-            self.filter_dropdown.value = items[0]["name"]
-            self.render_calendar_grid(self.filter_dropdown.value)
-        else:
+        try:
+            if self.json_data and key in self.json_data and isinstance(self.json_data[key], list) and len(self.json_data[key]) > 0:
+                items = self.json_data[key]
+                self.filter_dropdown.options = [ft.dropdown.Option(item["name"]) for item in items if "name" in item]
+                self.filter_dropdown.value = items[0]["name"]
+                self.render_calendar_grid(self.filter_dropdown.value)
+            else:
+                self.filter_dropdown.options = []
+                self.filter_dropdown.value = None
+                self.grid_scroll_row.controls.clear()
+        except:
             self.filter_dropdown.options = []
             self.filter_dropdown.value = None
             self.grid_scroll_row.controls.clear()
@@ -123,99 +126,97 @@ class MilitaryMobileApp:
 
     def on_filter_changed(self, e):
         self.render_calendar_grid(self.filter_dropdown.value)
-# Блок 5: Повний виправлений код (Частина 4: Валідація сортування ключів гріда)
-    def get_day_sort_key(self, key_string):
-        title_lower = str(key_string).lower()
-        
-        # Перевірка на формат ISO календарної дати YYYY-MM-DD
-        if len(title_lower) >= 10 and title_lower[0:4].isdigit() and "-" in title_lower:
-            return (0, title_lower)
-            
-        if "день" in title_lower:
-            try:
+
+    def get_day_sort_key(self, day_title_tuple):
+        try:
+            day_title = day_title_tuple[0]
+            title_lower = stroke_str = str(day_title).lower()
+            if len(title_lower) >= 10 and title_lower[0:4].isdigit() and "-" in title_lower:
+                return (0, title_lower)
+            if "день" in title_lower:
                 num = int(''.join(filter(str.isdigit, title_lower)))
                 return (1, num)
-            except:
-                return (1, 999)
-                
-        for key, order in DAYS_ORDER.items():
-            if key in title_lower:
-                return (2, order)
-                
-        return (3, title_lower)
-# Блок 6: Повний виправлений код (Частина 5: Обробка та Рендеринг Календарної Сітки занять)
+            for key, order in DAYS_ORDER.items():
+                if key in title_lower: return (2, order)
+            return (3, title_lower)
+        except:
+            return (4, "")
+# Блок 5: Повний виправлений код main.py (Частина 4: Рендеринг сітки та обчислення годин)
     def render_calendar_grid(self, selected_name):
-        self.grid_scroll_row.controls.clear()
-        if not selected_name:
-            self.page.update()
-            return
-            
-        source_type = self.source_dropdown.value
-        target_group = next((g for g in self.json_data.get(source_type, []) if g["name"] == selected_name), None)
-        if not target_group:
-            self.page.update()
-            return
+        try:
+            self.grid_scroll_row.controls.clear()
+            if not selected_name:
+                self.page.update()
+                return
+                
+            source_type = self.source_dropdown.value
+            target_group = next((g for g in self.json_data.get(source_type, []) if g.get("name") == selected_name), None)
+            if not target_group:
+                self.page.update()
+                return
 
-        item_key = "templateItems" if source_type == "templates" else "algorithmItems"
-        self.current_items = target_group.get(item_key, [])
+            item_key = "templateItems" if source_type == "templates" else "algorithmItems"
+            self.current_items = target_group.get(item_key, [])
 
-        days_data = {}
-        for idx, item in enumerate(self.current_items):
-            if "date" in item and item["date"]:
-                try:
-                    dt = datetime.strptime(item["date"], "%Y-%m-%d")
-                    ukr_days = ["Понеділок", "Вівторок", "Середа", "Четвер", "П'ятниця", "Субота", "Неділя"]
-                    day_key = f"{item['date']} ({ukr_days[dt.weekday()]})"
-                except: 
-                    day_key = str(item["date"])
-            else:
-                day_key = f"День {item.get('dayNum', 1)}"
-            
-            if day_key not in days_data: 
-                days_data[day_key] = []
-            days_data[day_key].append((idx, item))
+            days_data = {}
+            for idx, item in enumerate(self.current_items):
+                if "date" in item and item["date"]:
+                    try:
+                        dt = datetime.strptime(item["date"], "%Y-%m-%d")
+                        ukr_days = ["Понеділок", "Вівторок", "Середа", "Четвер", "П'ятниця", "Субота", "Неділя"]
+                        day_key = f"{item['date']} ({ukr_days[dt.weekday()]})"
+                    except: 
+                        day_key = str(item["date"])
+                else:
+                    day_key = f"День {item.get('dayNum', 1)}"
+                
+                if day_key not in days_data: days_data[day_key] = []
+                days_data[day_key].append((idx, item))
 
-        ukr_days_lower = ["понеділок", "вівторок", "середа", "четвер", "п'ятниця", "субота", "неділя"]
-        current_day_name = ukr_days_lower[datetime.now().weekday()]
-        current_date_str = datetime.now().strftime("%Y-%m-%d")
+            ukr_days_lower = ["понеділок", "вівторок", "середа", "четвер", "п'ятниця", "субота", "неділя"]
+            current_day_name = ukr_days_lower[datetime.now().weekday()]
+            current_date_str = datetime.now().strftime("%Y-%m-%d")
 
-        # ВИПРАВЛЕНО: передаємо в лямбду x[0], щоб сортувати суворо за рядком назви дня (day_title)
-        sorted_days = sorted(days_data.items(), key=lambda x: self.get_day_sort_key(x[0]))
-# Блок 7: Повний виправлений код (Частина 6: Побудова контейнерів днів та підрахунок годин занять)
-        today_col_index = None
-        for col_idx, (day_title, items_list) in enumerate(sorted_days):
-            day_column = ft.Column(spacing=8, scroll=ft.ScrollMode.ADAPTIVE, expand=True)
-            title_lower = str(day_title).lower()
-            is_today = (current_day_name in title_lower) or (current_date_str in title_lower)
+            sorted_days = sorted(days_data.items(), key=self.get_day_sort_key)
+# Блок 6: Повний виправлений код main.py (Частина 5: Побудова карток та Календарних колонок)
+            today_col_index = None
+            for col_idx, (day_title, items_list) in enumerate(sorted_days):
+                day_column = ft.Column(spacing=8, scroll=ft.ScrollMode.ADAPTIVE, expand=True)
+                title_lower = str(day_title).lower()
+                is_today = (current_day_name in title_lower) or (current_date_str in title_lower)
 
-            if is_today:
-                today_col_index = col_idx
+                if is_today:
+                    today_col_index = col_idx
 
-            sorted_items = sorted(items_list, key=lambda x: x[1].get("startTime", "00:00:00"))
-            total_hours = sum(int(item.get("hours", 0)) for _, item in sorted_items)
-            
-            header_text = f"{day_title} [{total_hours} год]"
-            if is_today: header_text += " (СЬОГОДНІ)"
+                sorted_items = sorted(items_list, key=lambda x: x[1].get("startTime", "00:00:00"))
+                
+                total_hours = 0
+                for _, itm in sorted_items:
+                    try: total_hours += int(itm.get("hours", 0))
+                    except: pass
+                
+                header_text = f"{day_title} [{total_hours} год]"
+                if is_today: header_text += " (СЬОГОДНІ)"
 
-            day_column.controls.append(
-                ft.Container(
-                    content=ft.Text(header_text, weight="bold", size=12, color="white"),
-                    alignment=ft.alignment.center, padding=6, 
-                    bgcolor="#00B050" if is_today else "#2D302D", 
-                    border_radius=6
+                day_column.controls.append(
+                    ft.Container(
+                        content=ft.Text(header_text, weight="bold", size=12, color="white"),
+                        alignment=ft.alignment.center, padding=6, 
+                        bgcolor="#00B050" if is_today else "#2D302D", 
+                        border_radius=6
+                    )
                 )
-            )
-# Блок 8: Повний виправлений код (Частина 7: Динамічне фарбування карток занять)
-            for global_idx, item in sorted_items:
-                subj = item.get("subject", "Невідомо")
-                abbr = item.get("abbr", "")
-                start_t = item.get("startTime", "")[:5] if item.get("startTime") else "00:00"
-                end_t = item.get("endTime", "")[:5] if item.get("endTime") else "00:00"
-                loc = item.get("location", "—")
-                ctype = item.get("classType", "")
+# Блок 7: Повний виправлений код main.py (Частина 6: Побудова занять та Скролінг на сьогодні)
+                for global_idx, item in sorted_items:
+                    subj = item.get("subject", "Невідомо")
+                    abbr = item.get("abbr", "")
+                    start_t = item.get("startTime", "")[:5] if item.get("startTime") else "00:00"
+                    end_t = item.get("endTime", "")[:5] if item.get("endTime") else "00:00"
+                    loc = item.get("location", "—")
+                    ctype = item.get("classType", "")
 
-                clean_abbr = abbr.split()[0] if abbr else "СП"
-                card_color = COLOR_MAP.get(clean_abbr, "#757575")
+                    clean_abbr = abbr.split()[0] if abbr else "СП"
+                    card_color = COLOR_MAP.get(clean_abbr, "#757575")
 
                 card = ft.Container(
                     content=ft.Column([
@@ -237,23 +238,23 @@ class MilitaryMobileApp:
                 )
                 day_column.controls.append(card)
 
-            day_container = ft.Container(
-                content=day_column, width=220, 
-                bgcolor="#202220" if is_today else "#161716", 
-                border_radius=10, padding=8,
-                border=ft.border.all(2, "#00B050" if is_today else "#2D302D"),
-                height=550
-            )
-            self.grid_scroll_row.controls.append(day_container)
+                day_container = ft.Container(
+                    content=day_column, width=220, 
+                    bgcolor="#202220" if is_today else "#161716", 
+                    border_radius=10, padding=8,
+                    border=ft.border.all(2, "#00B050" if is_today else "#2D302D"),
+                    height=550
+                )
+                self.grid_scroll_row.controls.append(day_container)
+                
+            self.page.update()
             
-        self.page.update()
-        
-        if today_col_index is not None:
-            try:
-                self.grid_scroll_row.scroll_to(index=today_col_index, duration=500)
-            except:
-                pass
-# Блок 9: Повний виправлений код (Частина 8: Контролери форм Редагування та Видалення)
+            if today_col_index is not None:
+                try: self.grid_scroll_row.scroll_to(index=today_col_index, duration=500)
+                except: pass
+        except Exception as grid_ex:
+            self.page.show_snack_bar(ft.SnackBar(ft.Text(f"Помилка гріда: {str(grid_ex)}"), open=True))
+# Блок 8: Повний виправлений код main.py (Частина 7: Форма інспектування та зміни занять)
     def on_item_click(self, idx):
         self.selected_item_index = idx
         item = self.current_items[idx]
@@ -286,13 +287,11 @@ class MilitaryMobileApp:
             
             self.page.dialog.open = False
             self.render_calendar_grid(self.filter_dropdown.value)
-            self.page.show_snack_bar(ft.SnackBar(ft.Text("Заняття оновлено!"), open=True))
 
         def delete_item(_):
             self.current_items.pop(idx)
             self.page.dialog.open = False
             self.render_calendar_grid(self.filter_dropdown.value)
-            self.page.show_snack_bar(ft.SnackBar(ft.Text("Заняття видалено!"), open=True))
 
         self.page.dialog = ft.AlertDialog(
             title=ft.Text("Редагування заняття"),
@@ -311,11 +310,9 @@ class MilitaryMobileApp:
         )
         self.page.dialog.open = True
         self.page.update()
-# Блок 10: Повний виправлений код (Частина 9: Обробка створення нових сутностей розкладу)
+# Блок 9: Повний виправлений код main.py (Частина 8: Додавання нових карток у розклад)
     def open_add_item_modal(self, e):
-        if not self.filter_dropdown.value:
-            self.page.show_snack_bar(ft.SnackBar(ft.Text("Спочатку оберіть або додайте підрозділ!"), open=True))
-            return
+        if not self.filter_dropdown.value: return
 
         day_input = ft.TextField(label="Номер дня або Дата (YYYY-MM-DD)", value="1", width=250)
         start_input = ft.TextField(label="Час початку (HH:MM:SS)", value="08:30:00", width=250)
@@ -339,15 +336,12 @@ class MilitaryMobileApp:
                 "chapter": "БЗВП", "topic": "", "notes": ""
             }
             val = day_input.value
-            if "-" in val:
-                new_item["date"] = val
-            else:
-                new_item["dayNum"] = int(val) if val.isdigit() else 1
+            if "-" in val: new_item["date"] = val
+            else: new_item["dayNum"] = int(val) if val.isdigit() else 1
 
             self.current_items.append(new_item)
             self.page.dialog.open = False
             self.render_calendar_grid(self.filter_dropdown.value)
-            self.page.show_snack_bar(ft.SnackBar(ft.Text("Нове заняття успішно додано!"), open=True))
 
         self.page.dialog = ft.AlertDialog(
             title=ft.Text("Додати нове заняття"),
@@ -365,7 +359,7 @@ class MilitaryMobileApp:
         )
         self.page.dialog.open = True
         self.page.update()
-# Блок 11: Повний виправлений код (Частина 10: Управління списками рот/взводів та точка входу)
+# Блок 10: Повний виправлений код main.py (Частина 9: Управління підрозділами та модалки)
     def open_add_group_modal(self, e):
         name_input = ft.TextField(label="Назва підрозділу (Роти / Взводу)", placeholder="Наприклад: 2 Рота 1 Взвод", width=250)
 
@@ -373,22 +367,13 @@ class MilitaryMobileApp:
             if not name_input.value: return
             source_key = self.source_dropdown.value
             item_key = "templateItems" if source_key == "templates" else "algorithmItems"
-            
-            new_group = {
-                "name": name_input.value,
-                item_key: []
-            }
-            
-            if source_key not in self.json_data:
-                self.json_data[source_key] = []
-                
+            new_group = {"name": name_input.value, item_key: []}
+            if source_key not in self.json_data: self.json_data[source_key] = []
             self.json_data[source_key].append(new_group)
             self.page.dialog.open = False
-            
             self.filter_dropdown.options.append(ft.dropdown.Option(name_input.value))
             self.filter_dropdown.value = name_input.value
             self.render_calendar_grid(name_input.value)
-            self.page.show_snack_bar(ft.SnackBar(ft.Text(f"Підрозділ '{name_input.value}' створено!"), open=True))
 
         self.page.dialog = ft.AlertDialog(
             title=ft.Text("Створити підрозділ"),
@@ -403,26 +388,20 @@ class MilitaryMobileApp:
 
     def delete_current_group(self, e):
         selected_name = self.filter_dropdown.value
-        if not selected_name:
-            self.page.show_snack_bar(ft.SnackBar(ft.Text("Немає вибраного підрозділу для видалення!"), open=True))
-            return
-            
+        if not selected_name: return
         source_key = self.source_dropdown.value
         groups_list = self.json_data.get(source_key, [])
         target_group = next((g for g in groups_list if g["name"] == selected_name), None)
-        
         if target_group:
             groups_list.remove(target_group)
-            self.page.show_snack_bar(ft.SnackBar(ft.Text(f"Підрозділ '{selected_name}' видалено!"), open=True))
             self.update_filter_dropdown(source_key)
-
+# Блок 11: Повний виправлений код main.py (Частина 10: Генератор дат та запуск додатку)
     def open_generate_week_modal(self, e):
         def confirm_generation(_):
             try:
                 start_dt = datetime.strptime(date_input.value, "%Y-%m-%d")
                 source_type = self.source_dropdown.value
                 selected_name = self.filter_dropdown.value
-                
                 target_group = next((g for g in self.json_data.get(source_type, []) if g["name"] == selected_name), None)
                 if target_group:
                     items_key = "templateItems" if source_type == "templates" else "algorithmItems"
@@ -430,10 +409,8 @@ class MilitaryMobileApp:
                         day_offset = int(item.get("dayNum", 1)) - 1
                         target_date = start_dt + timedelta(days=day_offset)
                         item["date"] = target_date.strftime("%Y-%m-%d")
-                    
                     self.page.dialog.open = False
                     self.render_calendar_grid(selected_name)
-                    self.page.show_snack_bar(ft.SnackBar(ft.Text("Дати успішно згенеровано!"), open=True))
             except Exception as ex:
                 error_txt.value = f"Помилка: {str(ex)}"
                 self.page.update()
@@ -444,9 +421,8 @@ class MilitaryMobileApp:
         self.page.dialog = ft.AlertDialog(
             title=ft.Text("Генерація дат на тиждень"),
             content=ft.Column([
-                ft.Text("Введіть дату початку тижня. Всі дні шаблону автоматично отримають календарні дати."),
-                date_input,
-                error_txt
+                ft.Text("Введіть дату початку тижня. Всі дні шаблону отримають календарні дати."),
+                date_input, error_txt
             ], tight=True, spacing=10),
             actions=[
                 ft.TextButton("Скасувати", on_click=lambda _: setattr(self.page.dialog, "open", False) or self.page.update()),
@@ -461,9 +437,7 @@ class MilitaryMobileApp:
         try:
             with open(e.path, "w", encoding="utf-8") as f:
                 json.dump(self.json_data, f, ensure_ascii=False, indent=4)
-            self.page.show_snack_bar(ft.SnackBar(ft.Text("Файл успішно збережено!"), open=True))
-        except Exception as ex:
-            self.page.show_snack_bar(ft.SnackBar(ft.Text(f"Помилка збереження: {str(ex)}"), open=True))
+        except: pass
 
 def main(page: ft.Page):
     app = MilitaryMobileApp()
