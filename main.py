@@ -62,16 +62,26 @@ class MilitaryMobileApp:
         self.json_data = self.embedded_json
         self.update_filter_dropdown("templates")
     def on_file_picked(self, e: ft.FilePickerResultEvent):
-        if not e.files or not e.files.path: return
+        if not e.files and not getattr(e, "path", None):
+            return
         try:
-            file_path = e.files.path
+            file_path = None
+            if e.files and len(e.files) > 0:
+                file_path = e.files[0].path
+            elif getattr(e, "path", None):
+                file_path = e.path
+                
+            if not file_path:
+                return
+
             with open(file_path, "r", encoding="utf-8") as f:
                 parsed_data = json.load(f)
             
-            if "templates" in parsed_data or "algorithms" in parsed_data:
+            if isinstance(parsed_data, dict) and len(parsed_data) > 0:
                 self.json_data = parsed_data
-                self.source_dropdown.value = "templates"
-                self.update_filter_dropdown("templates")
+                first_key = list(parsed_data.keys())[0]
+                self.source_dropdown.value = first_key
+                self.update_filter_dropdown(first_key)
                 self.page.show_snack_bar(ft.SnackBar(ft.Text("Розклад успішно завантажено!"), open=True))
             else:
                 self.page.show_snack_bar(ft.SnackBar(ft.Text("Помилка структури розкладу у вашому JSON файлі!"), open=True))
@@ -81,13 +91,15 @@ class MilitaryMobileApp:
     def on_source_changed(self, e):
         self.update_filter_dropdown(self.source_dropdown.value)
     def update_filter_dropdown(self, key):
-        if key in self.json_data and self.json_data[key]:
-            self.filter_dropdown.options = [ft.dropdown.Option(item["name"]) for item in self.json_data[key]]
-            if isinstance(self.json_data[key], list) and len(self.json_data[key]) > 0:
-                self.filter_dropdown.value = self.json_data[key][0]["name"]
+        if self.json_data and key in self.json_data and self.json_data[key]:
+            items = self.json_data[key]
+            self.filter_dropdown.options = [ft.dropdown.Option(item["name"]) for item in items if "name" in item]
+            if len(items) > 0 and "name" in items[0]:
+                self.filter_dropdown.value = items[0]["name"]
+                self.render_calendar_grid(self.filter_dropdown.value)
             else:
                 self.filter_dropdown.value = None
-            self.render_calendar_grid(self.filter_dropdown.value)
+                self.grid_scroll_row.controls.clear()
         else:
             self.filter_dropdown.options = []
             self.filter_dropdown.value = None
