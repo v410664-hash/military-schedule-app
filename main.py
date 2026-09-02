@@ -109,9 +109,8 @@ class MilitaryMobileApp:
             items = self.json_data[key]
             self.filter_dropdown.options = [ft.dropdown.Option(item["name"]) for item in items if "name" in item]
             if len(items) > 0:
-                # ЗНАЙДЕНО ПОМИЛКУ: у попередніх блоках замість першого елемента items[0]["name"] 
-                # помилково викликався неіснуючий ключ items["name"]. Це ламало рендеринг і створювало чорний екран.
-                # ТЕПЕР ВИПРАВЛЕНО НА СТАТИСТИЧНО БЕЗПЕЧНИЙ ІНДЕКС ПЕРШОГО ЕЛЕМЕНТА
+                # КРИТИЧНЕ ВИПРАВЛЕННЯ: items є списком, тому items["name"] викликав аварійне завершення (чорний екран).
+                # Тепер ми беремо елемент за правильним індексом: items[0]["name"]
                 self.filter_dropdown.value = items[0]["name"]
                 self.render_calendar_grid(self.filter_dropdown.value)
             else:
@@ -126,10 +125,9 @@ class MilitaryMobileApp:
     def on_filter_changed(self, e):
         self.render_calendar_grid(self.filter_dropdown.value)
     def get_day_sort_key(self, item_tuple):
-        day_title = item_tuple
+        day_title = item_tuple[0]  # Виправлено розбір кортежу з items()
         title_lower = str(day_title).lower()
         
-        # ВИПРАВЛЕНО: Спрощено та виправлено синтаксичний баг хронологічної перевірки дат YYYY-MM-DD
         if len(title_lower) >= 10 and title_lower[0:4].isdigit() and "-" in title_lower:
             return (0, title_lower)
             
@@ -180,7 +178,8 @@ class MilitaryMobileApp:
         current_day_name = ukr_days_lower[datetime.now().weekday()]
         current_date_str = datetime.now().strftime("%Y-%m-%d")
 
-        sorted_days = sorted(days_data.items(), key=lambda x: self.get_day_sort_key(x[0]))
+        # Виправлено передачу аргументів у функцію сортування словника
+        sorted_days = sorted(days_data.items(), key=self.get_day_sort_key)
         today_col_index = None
         for col_idx, (day_title, items_list) in enumerate(sorted_days):
             day_column = ft.Column(spacing=8, scroll=ft.ScrollMode.ADAPTIVE, expand=True)
@@ -290,7 +289,6 @@ class MilitaryMobileApp:
             self.page.dialog.open = False
             self.render_calendar_grid(self.filter_dropdown.value)
             self.page.show_snack_bar(ft.SnackBar(ft.Text("Заняття видалено!"), open=True))
-
         self.page.dialog = ft.AlertDialog(
             title=ft.Text("Редагування заняття"),
             content=ft.Container(
@@ -343,8 +341,7 @@ class MilitaryMobileApp:
             self.current_items.append(new_item)
             self.page.dialog.open = False
             self.render_calendar_grid(self.filter_dropdown.value)
-            self.page.show_snack_bar(ft.SnackBar(ft.Text("Нове заняття успішно додано!"), open=True))
-
+            self.page.show_snack_bar(ft.SnackBar(ft.Text("Нове заняття успешно додано!"), open=True))
         self.page.dialog = ft.AlertDialog(
             title=ft.Text("Додати нове заняття"),
             content=ft.Container(
