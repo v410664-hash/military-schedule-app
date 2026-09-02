@@ -62,9 +62,9 @@ class MilitaryMobileApp:
         self.json_data = self.embedded_json
         self.update_filter_dropdown("templates")
     def on_file_picked(self, e: ft.FilePickerResultEvent):
-        if not e.files or not e.files[0].path: return
+        if not e.files or not e.files.path: return
         try:
-            file_path = e.files[0].path
+            file_path = e.files.path
             with open(file_path, "r", encoding="utf-8") as f:
                 parsed_data = json.load(f)
             
@@ -135,21 +135,12 @@ class MilitaryMobileApp:
             
             if day_key not in days_data: days_data[day_key] = []
             days_data[day_key].append((idx, item))
+
         ukr_days_lower = ["понеділок", "вівторок", "середа", "четвер", "п'ятниця", "субота", "неділя"]
         current_day_name = ukr_days_lower[datetime.now().weekday()]
         current_date_str = datetime.now().strftime("%Y-%m-%d")
 
         sorted_days = sorted(days_data.items(), key=self.get_day_sort_key)
-
-        today_index = None
-        for i, (day_title, _) in enumerate(sorted_days):
-            title_lower = str(day_title).lower()
-            if (current_day_name in title_lower) or (current_date_str in title_lower):
-                today_index = i
-                break
-
-        if today_index is not None and today_index > 0:
-            sorted_days = sorted_days[today_index:] + sorted_days[:today_index]
         for col_idx, (day_title, items_list) in enumerate(sorted_days):
             day_column = ft.Column(spacing=8, scroll=ft.ScrollMode.ADAPTIVE, expand=True)
             
@@ -157,7 +148,7 @@ class MilitaryMobileApp:
             is_today = (current_day_name in title_lower) or (current_date_str in title_lower)
 
             sorted_items = sorted(items_list, key=lambda x: x[1].get("startTime", "00:00:00"))
-            total_hours = sum(int(item[1].get("hours", 0)) for item in sorted_items)
+            total_hours = sum(int(item.get("hours", 0)) for _, item in sorted_items)
             
             header_text = f"{day_title} [{total_hours} год]"
             if is_today: header_text += " (СЬОГОДНІ)"
