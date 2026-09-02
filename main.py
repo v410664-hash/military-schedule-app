@@ -1,4 +1,4 @@
-# Блок 2: Повний виправлений код main.py (Частина 1: Імпорт, Мапи та Конструктор класу)
+# Блок 1: Повний стабільний код main.py (Частина 1: Імпорт, Мапи та Конструктор)
 import json
 import flet as ft
 from datetime import datetime, timedelta
@@ -42,7 +42,7 @@ class MilitaryMobileApp:
             ],
             "algorithms": []
         }
-# Блок 3: Повний виправлений код main.py (Частина 2: Інтерфейс UI Панелі)
+# Блок 2: Повний стабільний код main.py (Частина 2: Інтерфейс та Панель кнопок)
     def build_main_ui(self, page: ft.Page):
         self.page = page
         self.page.title = "Менеджер БЗВП — Повний Екран Рот"
@@ -85,7 +85,7 @@ class MilitaryMobileApp:
         
         self.json_data = self.embedded_json
         self.update_filter_dropdown("templates")
-# Блок 4: Повний виправлений код main.py (Частина 3: Безпечна фільтрація та Ключі сортування)
+# Блок 3: Повний стабільний код main.py (Частина 3: Файли, Списки та Сортування за датами)
     def on_file_picked(self, e: ft.FilePickerResultEvent):
         if not e.files or not e.files.path: return
         try:
@@ -141,7 +141,7 @@ class MilitaryMobileApp:
             return (3, title_lower)
         except:
             return (4, "")
-# Блок 5: Повний виправлений код main.py (Частина 4: Рендеринг сітки та обчислення годин)
+# Блок 4: Повний стабільний код main.py (Частина 4: Рендеринг сітки занять та Хронологія)
     def render_calendar_grid(self, selected_name):
         try:
             self.grid_scroll_row.controls.clear()
@@ -178,7 +178,7 @@ class MilitaryMobileApp:
             current_date_str = datetime.now().strftime("%Y-%m-%d")
 
             sorted_days = sorted(days_data.items(), key=self.get_day_sort_key)
-# Блок 6: Повний виправлений код main.py (Частина 5: Побудова карток та Календарних колонок)
+# Блок 5: Повний стабільний код main.py (Частина 5: Побудова карток та Скролінг на Сьогодні)
             today_col_index = None
             for col_idx, (day_title, items_list) in enumerate(sorted_days):
                 day_column = ft.Column(spacing=8, scroll=ft.ScrollMode.ADAPTIVE, expand=True)
@@ -206,7 +206,7 @@ class MilitaryMobileApp:
                         border_radius=6
                     )
                 )
-# Блок 7: Повний виправлений код main.py (Частина 6: Побудова занять та Скролінг на сьогодні)
+
                 for global_idx, item in sorted_items:
                     subj = item.get("subject", "Невідомо")
                     abbr = item.get("abbr", "")
@@ -218,25 +218,25 @@ class MilitaryMobileApp:
                     clean_abbr = abbr.split()[0] if abbr else "СП"
                     card_color = COLOR_MAP.get(clean_abbr, "#757575")
 
-                card = ft.Container(
-                    content=ft.Column([
-                        ft.Row([
-                            ft.Text(f"{start_t}-{end_t}", size=11, color="#B0B0B0"),
-                            ft.Text(ctype, size=11, weight="bold", color="#FFD700" if "(П)" in ctype else "#808080")
-                        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                        ft.Text(subj, size=13, weight="bold", max_lines=2, overflow=ft.TextOverflow.ELLIPSIS),
-                        ft.Row([
-                            ft.Text(abbr, size=11, color="white", weight="bold"),
-                            ft.Text(loc, size=11, color="#E0E0E0", italic=True)
-                        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
-                    ], spacing=4),
-                    padding=8,
-                    bgcolor="#2C2F2C" if is_today else "#252625",
-                    border_radius=6,
-                    border=ft.border.all(1, card_color),
-                    on_click=lambda _, idx=global_idx: self.on_item_click(idx)
-                )
-                day_column.controls.append(card)
+                    card = ft.Container(
+                        content=ft.Column([
+                            ft.Row([
+                                ft.Text(f"{start_t}-{end_t}", size=11, color="#B0B0B0"),
+                                ft.Text(ctype, size=11, weight="bold", color="#FFD700" if "(П)" in ctype else "#808080")
+                            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                            ft.Text(subj, size=13, weight="bold", max_lines=2, overflow=ft.TextOverflow.ELLIPSIS),
+                            ft.Row([
+                                ft.Text(abbr, size=11, color="white", weight="bold"),
+                                ft.Text(loc, size=11, color="#E0E0E0", italic=True)
+                            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+                        ], spacing=4),
+                        padding=8,
+                        bgcolor="#2C2F2C" if is_today else "#252625",
+                        border_radius=6,
+                        border=ft.border.all(1, card_color),
+                        on_click=lambda _, idx=global_idx: self.on_item_click(idx)
+                    )
+                    day_column.controls.append(card)
 
                 day_container = ft.Container(
                     content=day_column, width=220, 
@@ -254,7 +254,7 @@ class MilitaryMobileApp:
                 except: pass
         except Exception as grid_ex:
             self.page.show_snack_bar(ft.SnackBar(ft.Text(f"Помилка гріда: {str(grid_ex)}"), open=True))
-# Блок 8: Повний виправлений код main.py (Частина 7: Форма інспектування та зміни занять)
+# Блок 6: Повний стабільний код main.py (Частина 6: Форма Редагування занять)
     def on_item_click(self, idx):
         self.selected_item_index = idx
         item = self.current_items[idx]
@@ -310,7 +310,7 @@ class MilitaryMobileApp:
         )
         self.page.dialog.open = True
         self.page.update()
-# Блок 9: Повний виправлений код main.py (Частина 8: Додавання нових карток у розклад)
+# Блок 7: Повний стабільний код main.py (Частина 7: Форма створення Нових занять)
     def open_add_item_modal(self, e):
         if not self.filter_dropdown.value: return
 
@@ -359,7 +359,7 @@ class MilitaryMobileApp:
         )
         self.page.dialog.open = True
         self.page.update()
-# Блок 10: Повний виправлений код main.py (Частина 9: Управління підрозділами та модалки)
+# Блок 8: Повний стабільний код main.py (Частина 8: Створення та видалення підрозділів, Логіка зсуву дат)
     def open_add_group_modal(self, e):
         name_input = ft.TextField(label="Назва підрозділу (Роти / Взводу)", placeholder="Наприклад: 2 Рота 1 Взвод", width=250)
 
@@ -395,7 +395,7 @@ class MilitaryMobileApp:
         if target_group:
             groups_list.remove(target_group)
             self.update_filter_dropdown(source_key)
-# Блок 11: Повний виправлений код main.py (Частина 10: Генератор дат та запуск додатку)
+
     def open_generate_week_modal(self, e):
         def confirm_generation(_):
             try:
@@ -431,7 +431,7 @@ class MilitaryMobileApp:
         )
         self.page.dialog.open = True
         self.page.update()
-
+# Блок 9: Повний стабільний код main.py (Частина 9: Збереження файлу та Запуск програми)
     def on_file_saved(self, e: ft.FilePickerResultEvent):
         if not e.path: return
         try:
